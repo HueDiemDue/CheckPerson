@@ -1,4 +1,4 @@
-package vision.computer.client.hue.com.checkperson;
+package vision.computer.client.hue.com.checkperson.utils;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;

@@ -1,4 +1,4 @@
-package vision.computer.client.hue.com.checkperson;
+package vision.computer.client.hue.com.checkperson.activities;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -15,17 +15,19 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.Socket;
+
+import vision.computer.client.hue.com.checkperson.R;
+import vision.computer.client.hue.com.checkperson.models.ImgObject;
 
 public class MainActivity extends AppCompatActivity {
     private Button btnConnect;
     private TextView tvResult;
     private EditText edtRequest;
     private ImageView imgResult;
+    private TextView tvDate;
     private String TAG = "MainActivity";
 
     @Override
@@ -41,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
         tvResult = (TextView) findViewById(R.id.tv_result);
         edtRequest = (EditText) findViewById(R.id.edt_request);
         imgResult = (ImageView) findViewById(R.id.img_result);
+        tvDate = (TextView) findViewById(R.id.tv_date);
     }
 
     private void initAction() {
@@ -66,8 +69,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private class MyClient extends AsyncTask<Void, Void, Void> {
-        String message = "";
-        Socket sk;
+        private String message = "";
+        private Socket sk;
+        private String filePath = "";
+        private String date = "";
         private Context context;
 
         public MyClient(Context context) {
@@ -79,56 +84,62 @@ public class MainActivity extends AppCompatActivity {
         protected Void doInBackground(Void... voids) {
             Log.d(TAG, "doInBackground");
             try {
-                Log.d(TAG, "init ok");
-                sk = new Socket("192.168.18.101", 7806);
+                Log.d(TAG, "init");
+                sk = new Socket("192.168.18.101", 7817);
                 Log.d(TAG, "init ok" + sk.isConnected());
                 DataOutputStream os = new DataOutputStream(sk.getOutputStream());
                 os.writeUTF(edtRequest.getText().toString().trim());
 
 
-//                while (true) {
-//                    //read text
+                while (true) {
+                    //read text
 //                    DataInputStream is = new DataInputStream(sk.getInputStream());
-//                    message = message + "\n" + "Server: " + is.readUTF();
+//                    message = "Server: " + is.readUTF();
 //                    Log.d("Client", message);
-//
-//                    //read img
-//
-//                }
-                // read img
-                ObjectInputStream ois = new ObjectInputStream(sk.getInputStream());
 
-                try {
-                    byte[] buffer = (byte[]) ois.readObject();
-                    FileOutputStream fos = new FileOutputStream("sdcard/DCIM/hue.png");
-                    fos.write(buffer);
-                } catch (ClassNotFoundException e) {
-                    e.printStackTrace();
+                    // read object img
+
+                    ObjectInputStream ois = new ObjectInputStream(sk.getInputStream());
+                    Log.d(TAG, "read img");
+
+                    try {
+                        Log.d(TAG, "read imgObjectss");
+//                        byte[] buffer = (byte[]) ois.readObject();
+                        ImgObject imgObject = (ImgObject) ois.readObject();
+                        Log.d(TAG, "read imgObject");
+//                            filePath = saveImageFromBuffer(imgObject.getData().getBytes());
+
+                        date = imgObject.getTime();
+                        Log.d(TAG, date + "_" + imgObject.getData());
+
+                    } catch (ClassNotFoundException e) {
+                        e.printStackTrace();
+                    }
                 }
 
-
             } catch (IOException e) {
                 e.printStackTrace();
-                Log.d(TAG, "IOException" + e.toString());
+                Log.d(TAG, "IOException : " + e.toString() + "_" + "Error Connect!!!");
             }
-            try {
-                sk.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+            if (sk != null) {
+                try {
+                    sk.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
-
             return null;
         }
 
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
-            File imgFile = new File("/sdcard/DCIM/hue.png");
-            if (imgFile.exists()) {
-                Bitmap myImg = BitmapFactory.decodeFile(imgFile.getPath());
+            if (!filePath.equals("")) {
+                Bitmap myImg = BitmapFactory.decodeFile(filePath);
                 Log.d(TAG, myImg.toString() + " bitmap");
                 imgResult.setImageBitmap(myImg);
             }
+            tvDate.setText("Datetime : " + date.toString());
             tvResult.setText(message);
 
         }
