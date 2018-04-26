@@ -5,8 +5,13 @@ import android.util.Log;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Enumeration;
 
 /**
  * Created by huedi on 4/24/2018.
@@ -34,6 +39,33 @@ public class Utils {
             return file.getAbsolutePath();
         } catch (Exception e) {
             e.printStackTrace();
+        }
+        return null;
+    }
+    public static String getIpv4(){
+        String ip = "";
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface iface = interfaces.nextElement();
+                // filters out 127.0.0.1 and inactive interfaces
+                if (iface.isLoopback() || !iface.isUp())
+                    continue;
+
+                Enumeration<InetAddress> addresses = iface.getInetAddresses();
+                while(addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+
+                    // *EDIT*
+                    if (addr instanceof Inet6Address) continue;
+
+                    ip = addr.getHostAddress();
+                    Log.d("IPCONFIG", ip);
+                    return ip;
+                }
+            }
+        } catch (SocketException e) {
+            throw new RuntimeException(e);
         }
         return null;
     }

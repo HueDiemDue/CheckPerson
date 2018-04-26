@@ -1,3 +1,7 @@
 <resources>
-    <string name="app_name">CheckPerson</string>
+    <string name="app_name">Camera Surveillance Result</string>
+    <string name="hint_edt">Type request connect to server</string>
+    <string name="text_button">Connect to Server</string>
+    <string name="result">Result</string>
+    <string name="safe">Safe</string>
 </resources>

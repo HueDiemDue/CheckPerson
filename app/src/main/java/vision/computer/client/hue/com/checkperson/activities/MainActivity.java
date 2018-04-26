@@ -1,11 +1,12 @@
 package vision.computer.client.hue.com.checkperson.activities;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.DefaultItemAnimator;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -14,21 +15,32 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 
 import vision.computer.client.hue.com.checkperson.R;
+import vision.computer.client.hue.com.checkperson.adapter.ImageObjectAdapter;
 import vision.computer.client.hue.com.checkperson.models.ImgObject;
+
+import static vision.computer.client.hue.com.checkperson.utils.Utils.saveImageFromBuffer;
 
 public class MainActivity extends AppCompatActivity {
     private Button btnConnect;
     private TextView tvResult;
     private EditText edtRequest;
     private ImageView imgResult;
-    private TextView tvDate;
+    private TextView tvDate, tvNoti;
     private String TAG = "MainActivity";
+    private String IP = "";
+    private int PORT = 0;
+    private RecyclerView rcvImg;
+    private ArrayList<ImgObject> lstImg = new ArrayList<>();
+    private ImageObjectAdapter imgAdapter;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,8 +54,18 @@ public class MainActivity extends AppCompatActivity {
         btnConnect = (Button) findViewById(R.id.btn_connect);
         tvResult = (TextView) findViewById(R.id.tv_result);
         edtRequest = (EditText) findViewById(R.id.edt_request);
-        imgResult = (ImageView) findViewById(R.id.img_result);
-        tvDate = (TextView) findViewById(R.id.tv_date);
+        tvNoti = (TextView) findViewById(R.id.tv_noti);
+        rcvImg = (RecyclerView) findViewById(R.id.rcv_lstResult);
+
+        RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(MainActivity.this,
+                LinearLayoutManager.HORIZONTAL, false);
+        rcvImg.setLayoutManager(mLayoutManager);
+        rcvImg.setItemAnimator(new DefaultItemAnimator());
+        rcvImg.setHasFixedSize(true);
+        imgAdapter = new ImageObjectAdapter(MainActivity.this, lstImg);
+        rcvImg.setAdapter(imgAdapter);
+        tvNoti.setVisibility(View.GONE);
+
     }
 
     private void initAction() {
@@ -70,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
 
     private class MyClient extends AsyncTask<Void, Void, Void> {
         private String message = "";
-        private Socket sk;
+        private Socket server;
         private String filePath = "";
         private String date = "";
         private Context context;
@@ -85,35 +107,30 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "doInBackground");
             try {
                 Log.d(TAG, "init");
-                sk = new Socket("192.168.18.101", 7817);
-                Log.d(TAG, "init ok" + sk.isConnected());
-                DataOutputStream os = new DataOutputStream(sk.getOutputStream());
-                os.writeUTF(edtRequest.getText().toString().trim());
+                server = new Socket("192.168.5.22", 7819);
+                Log.d(TAG, "init ok" + server.isConnected());
 
+                DataOutputStream os = new DataOutputStream(server.getOutputStream());
+                DataInputStream is = new DataInputStream(server.getInputStream());
+                ObjectInputStream ois = new ObjectInputStream(server.getInputStream());
+
+                os.writeUTF(edtRequest.getText().toString().trim());
+                message = "Server: " + is.readUTF();
+                Log.d(TAG, message);
 
                 while (true) {
-                    //read text
-//                    DataInputStream is = new DataInputStream(sk.getInputStream());
-//                    message = "Server: " + is.readUTF();
-//                    Log.d("Client", message);
-
+                    Log.d(TAG, "while");
                     // read object img
-
-                    ObjectInputStream ois = new ObjectInputStream(sk.getInputStream());
-                    Log.d(TAG, "read img");
-
                     try {
-                        Log.d(TAG, "read imgObjectss");
-//                        byte[] buffer = (byte[]) ois.readObject();
-                        ImgObject imgObject = (ImgObject) ois.readObject();
-                        Log.d(TAG, "read imgObject");
-//                            filePath = saveImageFromBuffer(imgObject.getData().getBytes());
-
-                        date = imgObject.getTime();
-                        Log.d(TAG, date + "_" + imgObject.getData());
-
+                        date = (String) ois.readObject();
+                        byte[] buffer = (byte[]) ois.readObject();
+                        Log.d(TAG, "read imgObject" + ois.available());
+                        filePath = saveImageFromBuffer(buffer);
+                        lstImg.add(new ImgObject(date, filePath));
+                        Log.d(TAG, date + "_" + buffer.length);
                     } catch (ClassNotFoundException e) {
                         e.printStackTrace();
+                        Log.d(TAG, "error " + e.toString());
                     }
                 }
 
@@ -121,9 +138,9 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
                 Log.d(TAG, "IOException : " + e.toString() + "_" + "Error Connect!!!");
             }
-            if (sk != null) {
+            if (server != null) {
                 try {
-                    sk.close();
+                    server.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -134,13 +151,18 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
-            if (!filePath.equals("")) {
-                Bitmap myImg = BitmapFactory.decodeFile(filePath);
-                Log.d(TAG, myImg.toString() + " bitmap");
-                imgResult.setImageBitmap(myImg);
+            if (lstImg.size() > 0) {
+                Log.d(TAG, lstImg.size() + " list");
+                tvResult.setText(message + "\n" +
+                        "Server : Dangerous");
+                imgAdapter = new ImageObjectAdapter(MainActivity.this, lstImg);
+                rcvImg.setAdapter(imgAdapter);
+                imgAdapter.notifyDataSetChanged();
+                tvNoti.setVisibility(View.GONE);
+            } else {
+                tvNoti.setVisibility(View.VISIBLE);
             }
-            tvDate.setText("Datetime : " + date.toString());
-            tvResult.setText(message);
+
 
         }
     }
