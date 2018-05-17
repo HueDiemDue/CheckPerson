@@ -15,6 +15,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -43,11 +44,8 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<ImgObject> lstImg = new ArrayList<>();
     private ImageObjectAdapter imgAdapter;
     private Timer timer = new Timer();
-    final Handler messageHandler = new Handler();
-    private String message = "";
-    private Socket server;
-    private String filePath = "";
-    private String date = "";
+    Handler messageHandler = new Handler();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,30 +74,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initAction() {
-
-
         btnConnect.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                messageHandler.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        MyClient myClient = new MyClient(MainActivity.this);
-                        myClient.execute();
-                    }
-                }, 100);
 
-//                if (edtRequest.getText().equals("")) {
-//                    Toast.makeText(MainActivity.this,
-//                            "You must enter a request", Toast.LENGTH_LONG).show();
-//
-//                } else if (edtRequest.getText().toString().trim().equals("connect")) {
-//                    Log.d(TAG, "request true");
-//
-//                    MyClient cs = new MyClient(MainActivity.this);
-//                    cs.execute();
-//
-//                } else {
+
+                if (edtRequest.getText().equals("")) {
+                    Toast.makeText(MainActivity.this,
+                            "You must enter a request", Toast.LENGTH_LONG).show();
+
+                } else {
+                    Log.d(TAG, "request true");
+//                    MyClient myClient = new MyClient(MainActivity.this);
+//                    myClient.execute();
+                    new Thread(new connectToServer()).start();
+
+                }
+//                else {
 //                    Toast.makeText(MainActivity.this,
 //                            "Invalid login request", Toast.LENGTH_LONG).show();
 //                }
@@ -126,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
 
             try {
                 Log.d(TAG, "init");
-                server = new Socket("192.168.18.104", 7819);
+                server = new Socket(edtRequest.getText().toString().trim(), 7819);
                 Log.d(TAG, "init ok" + server.isConnected());
 
                 DataOutputStream os = new DataOutputStream(server.getOutputStream());
@@ -138,8 +129,10 @@ public class MainActivity extends AppCompatActivity {
                 os.writeUTF("connect");
                 message = "Server: " + is.readUTF();
                 Log.d(TAG, message);
-                while (true) {
+
+                while (ois != null) {
                     Log.d(TAG, "while");
+
                     // read object img
                     try {
                         date = (String) ois.readObject();
@@ -178,18 +171,18 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
             Log.d(TAG, "omPost");
-//            if (lstImg.size() > 0) {
-//                Log.d(TAG, lstImg.size() + " list");
-//                tvResult.setText(message + "\n" +
-//                        "Server : Dangerous");
-//                imgAdapter = new ImageObjectAdapter(MainActivity.this, lstImg);
-//                rcvImg.setAdapter(imgAdapter);
-//                imgAdapter.notifyDataSetChanged();
-//                tvNoti.setVisibility(View.GONE);
-//            } else {
-//                tvResult.setText(message);
-//                tvNoti.setVisibility(View.VISIBLE);
-//            }
+            if (lstImg.size() > 0) {
+                Log.d(TAG, lstImg.size() + " list");
+                tvResult.setText(message + "\n" +
+                        "Server : Dangerous");
+                imgAdapter = new ImageObjectAdapter(MainActivity.this, lstImg);
+                rcvImg.setAdapter(imgAdapter);
+                imgAdapter.notifyDataSetChanged();
+                tvNoti.setVisibility(View.GONE);
+            } else {
+                tvResult.setText(message);
+                tvNoti.setVisibility(View.VISIBLE);
+            }
 
 
         }
@@ -233,5 +226,66 @@ public class MainActivity extends AppCompatActivity {
             }
         }.execute();
     }
+
+    private class connectToServer implements Runnable {
+        private String message = "";
+        private Socket server;
+        private String filePath = "";
+        private String date = "";
+
+        @Override
+        public void run() {
+            try {
+                Log.d(TAG, "init");
+                server = new Socket(edtRequest.getText().toString().trim(), 7819);
+                Log.d(TAG, "init ok" + server.isConnected());
+
+                DataOutputStream os = new DataOutputStream(server.getOutputStream());
+                DataInputStream is = new DataInputStream(server.getInputStream());
+                final ObjectInputStream ois = new ObjectInputStream(server.getInputStream());
+
+//                os.writeUTF(edtRequest.getText().toString().trim());
+
+                os.writeUTF("connect");
+                message = "Server: " + is.readUTF();
+                Log.d(TAG, message);
+
+                while (ois != null) {
+                    Log.d(TAG, "while");
+
+                    // read object img
+                    try {
+                        date = (String) ois.readObject();
+                        byte[] buffer = (byte[]) ois.readObject();
+                        Log.d(TAG, "read imgObject" + ois.available());
+                        filePath = saveImageFromBuffer(buffer);
+                        lstImg.clear();
+                        lstImg.add(new ImgObject(date, filePath));
+                        Log.d(TAG, "dd " + lstImg.size());
+
+                        Log.d(TAG, date + "_" + buffer.length);
+                    } catch (ClassNotFoundException e) {
+                        e.printStackTrace();
+                        Log.d(TAG, "error " + e.toString());
+                    }
+                    refreshData(message);
+                }
+
+
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.d(TAG, "IOException : " + e.toString() + "_" + "Error Connect!!!");
+            }
+
+            if (server != null) {
+                try {
+                    server.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
 
 }

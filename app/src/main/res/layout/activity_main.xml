@@ -19,7 +19,6 @@
         android:textStyle="bold" />
 
     <EditText
-        android:visibility="gone"
         android:id="@+id/edt_request"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
