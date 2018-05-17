@@ -1,7 +1,6 @@
 package vision.computer.client.hue.com.checkperson.activities;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -99,94 +98,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private class MyClient extends AsyncTask<Void, Void, Void> {
-        private String message = "";
-        private Socket server;
-        private String filePath = "";
-        private String date = "";
-        private Context context;
-
-        public MyClient(Context context) {
-            this.context = context;
-        }
-
-
-        @Override
-        protected Void doInBackground(Void... voids) {
-            Log.d(TAG, "doInBackground");
-
-            try {
-                Log.d(TAG, "init");
-                server = new Socket(edtRequest.getText().toString().trim(), 7819);
-                Log.d(TAG, "init ok" + server.isConnected());
-
-                DataOutputStream os = new DataOutputStream(server.getOutputStream());
-                DataInputStream is = new DataInputStream(server.getInputStream());
-                final ObjectInputStream ois = new ObjectInputStream(server.getInputStream());
-
-//                os.writeUTF(edtRequest.getText().toString().trim());
-
-                os.writeUTF("connect");
-                message = "Server: " + is.readUTF();
-                Log.d(TAG, message);
-
-                while (ois != null) {
-                    Log.d(TAG, "while");
-
-                    // read object img
-                    try {
-                        date = (String) ois.readObject();
-                        byte[] buffer = (byte[]) ois.readObject();
-                        Log.d(TAG, "read imgObject" + ois.available());
-                        filePath = saveImageFromBuffer(buffer);
-                        lstImg.clear();
-                        lstImg.add(new ImgObject(date, filePath));
-                        Log.d(TAG, "dd " + lstImg.size());
-
-                        Log.d(TAG, date + "_" + buffer.length);
-                    } catch (ClassNotFoundException e) {
-                        e.printStackTrace();
-                        Log.d(TAG, "error " + e.toString());
-                    }
-                    refreshData(message);
-                }
-
-
-            } catch (IOException e) {
-                e.printStackTrace();
-                Log.d(TAG, "IOException : " + e.toString() + "_" + "Error Connect!!!");
-            }
-
-            if (server != null) {
-                try {
-                    server.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
-            Log.d(TAG, "omPost");
-            if (lstImg.size() > 0) {
-                Log.d(TAG, lstImg.size() + " list");
-                tvResult.setText(message + "\n" +
-                        "Server : Dangerous");
-                imgAdapter = new ImageObjectAdapter(MainActivity.this, lstImg);
-                rcvImg.setAdapter(imgAdapter);
-                imgAdapter.notifyDataSetChanged();
-                tvNoti.setVisibility(View.GONE);
-            } else {
-                tvResult.setText(message);
-                tvNoti.setVisibility(View.VISIBLE);
-            }
-
-
-        }
-    }
 
     @SuppressLint("StaticFieldLeak")
     private void refreshData(final String message) {
