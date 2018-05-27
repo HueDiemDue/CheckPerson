@@ -87,12 +87,7 @@ public class MainActivity extends AppCompatActivity {
 //                    MyClient myClient = new MyClient(MainActivity.this);
 //                    myClient.execute();
                     new Thread(new connectToServer()).start();
-
                 }
-//                else {
-//                    Toast.makeText(MainActivity.this,
-//                            "Invalid login request", Toast.LENGTH_LONG).show();
-//                }
             }
         });
 
@@ -122,17 +117,20 @@ public class MainActivity extends AppCompatActivity {
             protected void onPostExecute(Void aVoid) {
                 super.onPostExecute(aVoid);
                 Log.d(TAG, "update lst ");
+
                 if (lstImg.size() > 0) {
                     Log.d(TAG, lstImg.size() + " list");
-                    tvResult.setText(message + "\n" +
-                            "Server : Dangerous");
+                    tvResult.setText(message + "\n " + "Server: Dangerous");
+                    rcvImg.setVisibility(View.VISIBLE);
                     imgAdapter = new ImageObjectAdapter(MainActivity.this, lstImg);
                     rcvImg.setAdapter(imgAdapter);
                     imgAdapter.notifyDataSetChanged();
                     tvNoti.setVisibility(View.GONE);
                 } else {
-                    tvResult.setText(message);
+                    Log.d(TAG, "null lst ");
+                    tvResult.setText(message + "\n" + "Server: Safe");
                     tvNoti.setVisibility(View.VISIBLE);
+                    rcvImg.setVisibility(View.GONE);
                 }
             }
         }.execute();
@@ -159,11 +157,16 @@ public class MainActivity extends AppCompatActivity {
 
                 os.writeUTF("connect");
                 message = "Server: " + is.readUTF();
+                tvResult.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        tvResult.setText(message);
+                    }
+                });
                 Log.d(TAG, message);
 
                 while (ois != null) {
                     Log.d(TAG, "while");
-
                     // read object img
                     try {
                         date = (String) ois.readObject();
@@ -173,19 +176,37 @@ public class MainActivity extends AppCompatActivity {
                         lstImg.clear();
                         lstImg.add(new ImgObject(date, filePath));
                         Log.d(TAG, "dd " + lstImg.size());
-
                         Log.d(TAG, date + "_" + buffer.length);
                     } catch (ClassNotFoundException e) {
                         e.printStackTrace();
                         Log.d(TAG, "error " + e.toString());
                     }
                     refreshData(message);
+
                 }
+//                tvResult.post(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        if (lstImg.size() == 0) {
+//                            tvResult.setText(message + "\n" + "Server: Safe");
+//                            tvNoti.setVisibility(View.VISIBLE);
+//                            rcvImg.setVisibility(View.GONE);
+//                        }
+//                    }
+//                });
 
 
             } catch (IOException e) {
                 e.printStackTrace();
                 Log.d(TAG, "IOException : " + e.toString() + "_" + "Error Connect!!!");
+                if (lstImg.size() == 0) {
+                    tvResult.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            tvResult.setText("Error Connect");
+                        }
+                    });
+                }
             }
 
             if (server != null) {
